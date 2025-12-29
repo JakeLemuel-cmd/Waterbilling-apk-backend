@@ -17,11 +17,14 @@ $cons   = $input["consumption"] ?? null;
 $rate   = $input["ratePerM3"] ?? null;
 $amount = $input["amount"] ?? null;
 
+$type = s($input["type"] ?? "");
 $meterNumber = s($input["meterNumber"] ?? ""); // only used to update subscribers
 
-if ($subscriberId <= 0 || $accountNumber === "" || $billingMonth === "") {
-  fail("Missing required fields");
+
+if ($subscriberId <= 0 || $accountNumber === "" || $billingMonth === "" || $type === "") {
+  fail("Missing required fields (subscriberId, accountNumber, billingMonth, or type)");
 }
+
 
 foreach (["previousReading"=>$prev, "currentReading"=>$curr, "consumption"=>$cons, "ratePerM3"=>$rate, "amount"=>$amount] as $k=>$v) {
   if (!is_numeric($v)) fail("Invalid numeric field: {$k}");
@@ -43,20 +46,22 @@ try {
   $dateIssued = date("Y-m-d");
   $dueDate = date("Y-m-d", strtotime("+15 days"));
 
-  // Optional: prevent duplicate bill for same subscriber & month (recommended)
-  $check = $db->prepare("SELECT id FROM meter_billing WHERE subscriber_id = ? AND billing_month = ? LIMIT 1");
-  $check->execute([$subscriberId, $billingMonth]);
+  // Optional: prevent duplicate bill for same subscriber, month, and type
+  $check = $db->prepare("SELECT id FROM meter_billing WHERE subscriber_id = ? AND billing_month = ? AND type = ? LIMIT 1");
+  $check->execute([$subscriberId, $billingMonth, $type]);
   if ($check->fetch()) {
-    fail("Billing already exists for this subscriber and month");
+    fail("Billing for '{$type}' already exists for this subscriber and month");
   }
+
 
   $stmt = $db->prepare("
     INSERT INTO meter_billing (
       subscriber_id, account_number,
       billing_month, year, month,
       previous_reading, current_reading, consumption, rate_per_m3, amount,
-      status, date_issued, due_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Unpaid', ?, ?)
+      type, status, date_issued, due_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Unpaid', ?, ?)
+
   ");
 
   $stmt->execute([
@@ -70,9 +75,11 @@ try {
     (float)$cons,
     (float)$rate,
     (float)$amount,
+    $type,
     $dateIssued,
     $dueDate
   ]);
+
 
   // Update subscriber meter_number if provided
   if ($meterNumber !== "") {

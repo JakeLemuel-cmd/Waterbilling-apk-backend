@@ -6,14 +6,15 @@ try {
   $db = getDbConnection();
 
   $stmt = $db->query("
-    SELECT id, name, account_number, meter_number, subscriber_type
+    SELECT id, name, account_number, meter_number, type
     FROM subscribers
     ORDER BY name ASC
   ");
   $rows = $stmt->fetchAll();
 
   $subs = array_map(function($r) {
-    $raw = strtolower(trim($r["subscriber_type"] ?? "residential"));
+    $raw = strtolower(trim($r["type"] ?? "residential"));
+
     $hasRes = strpos($raw, "residential") !== false;
     $hasCom = strpos($raw, "commercial") !== false;
 
