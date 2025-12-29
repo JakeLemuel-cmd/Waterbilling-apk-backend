@@ -7,7 +7,8 @@ RUN a2enmod rewrite headers
 RUN docker-php-ext-install pdo pdo_mysql
 
 # Copy backend into Apache root
-COPY backend/ /var/www/html/
+COPY backendrender/ /var/www/html/
+
 
 # Allow .htaccess (optional)
 RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
